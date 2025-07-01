@@ -1,103 +1,115 @@
-import Image from "next/image";
+"use client";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [accessToken, setAccessToken] = useState("");
+  const [orderParams, setOrderParams] = useState(`{
+    "exchange": "NSE",
+    "tradingsymbol": "INFY",
+    "transaction_type": "BUY",
+    "quantity": 1,
+    "order_type": "MARKET",
+    "product": "CNC"
+  }`);
+  const [result, setResult] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+  useEffect(() => {
+    // Extract access_token from URL if present
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("access_token");
+    if (token) {
+      setAccessToken(token);
+      // Remove token from URL for cleanliness
+      url.searchParams.delete("access_token");
+      window.history.replaceState({}, document.title, url.pathname);
+    }
+  }, []);
+
+  async function handlePlaceOrder(e: React.FormEvent) {
+    e.preventDefault();
+    setResult(null);
+    try {
+      const res = await fetch("/api/zerodha/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token: accessToken,
+          orderParams: JSON.parse(orderParams),
+        }),
+      });
+      const data = await res.json();
+      setResult(JSON.stringify(data, null, 2));
+    } catch (err: any) {
+      setResult(err.message);
+    }
+  }
+
+  function handleRenewToken() {
+    setAccessToken("");
+    window.location.href = "/api/zerodha/login";
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
+      <section className="max-w-2xl w-full bg-white rounded-lg shadow-md p-8 mb-8">
+        <h1 className="text-4xl font-bold mb-4 text-blue-700">AutoTrade: Zerodha Order Placement</h1>
+        <p className="mb-4 text-gray-700">
+          <b>AutoTrade</b> is a demo platform that allows users to authenticate with Zerodha and place stock orders directly using the official Kite Connect API.<br/>
+          <span className="text-sm text-gray-500">(For demonstration purposes only. Do not use real credentials on public/shared servers.)</span>
+        </p>
+        <ul className="list-disc pl-6 mb-6 text-gray-600">
+          <li>Login securely with your Zerodha account</li>
+          <li>Obtain your access token after authentication</li>
+          <li>Place equity orders using the Kite Connect API</li>
+        </ul>
+      </section>
+
+      {!accessToken ? (
+        <section className="max-w-2xl w-full bg-white rounded-lg shadow-md p-8 mb-8">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-600">1. Login with Zerodha</h2>
+          <p className="mb-4 text-gray-700">Click below to authenticate with Zerodha and obtain your access token.</p>
+          <Link href="/api/zerodha/login">
+            <button className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition mb-2 w-full sm:w-auto">
+              Login with Zerodha
+            </button>
+          </Link>
+        </section>
+      ) : (
+        <>
+          <section className="max-w-2xl w-full bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 className="text-2xl font-semibold mb-4 text-blue-600">Renew Access Token</h2>
+            <p className="mb-4 text-gray-700">If your session expires or you want to renew your access token, click below.</p>
+            <button onClick={handleRenewToken} className="bg-yellow-500 text-white px-6 py-3 rounded hover:bg-yellow-600 transition w-full sm:w-auto">
+              Renew Token
+            </button>
+          </section>
+          <section className="max-w-2xl w-full bg-white rounded-lg shadow-md p-8 mb-8">
+            <h2 className="text-2xl font-semibold mb-4 text-blue-600">2. Place an Order</h2>
+            <form onSubmit={handlePlaceOrder} className="flex flex-col gap-4">
+              <label className="font-semibold">Order Parameters (JSON)</label>
+              <textarea
+                className="border px-3 py-2 rounded h-40 font-mono text-base text-gray-900 bg-gray-100 focus:bg-white focus:text-black focus:outline-blue-500 placeholder-gray-400"
+                value={orderParams}
+                onChange={e => setOrderParams(e.target.value)}
+                required
+              />
+              <button type="submit" className="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 transition">
+                Place Order
+              </button>
+            </form>
+            {result && (
+              <pre className="mt-6 bg-gray-100 p-4 rounded w-full overflow-x-auto text-xs text-gray-900">
+                {result}
+              </pre>
+            )}
+          </section>
+        </>
+      )}
+
+      <footer className="text-center text-gray-400 text-xs mt-8">
+        &copy; {new Date().getFullYear()} AutoTrade Demo. Powered by Next.js & Kite Connect.
       </footer>
-    </div>
+    </main>
   );
 }
